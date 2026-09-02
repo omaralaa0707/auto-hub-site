@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * One ink on one ground, and no accent colour anywhere.
+   *
+   * Auto Hub mark nothing with colour — their captions carry a hashtag and a
+   * full stop — so nothing on this page is marked with colour either. A car's
+   * status is printed into the halftone screen instead: fine for still listed,
+   * coarse for gone. Resolution is the only variable, which is a stronger
+   * constraint than site 15's single accent and the reason this page can be a
+   * seventh dark ground without repeating one.
+   *
+   * The two values are measured off their own frames: the black steel gate
+   * every car is photographed against (80,90,102 in shadow, near-black at the
+   * jamb) and the grey interlock paving they stand on (150,149,154).
+   */
+  --color-plate: #14161a; /* the ground */
+  --color-plate-2: #1c1f24; /* raised */
+  --color-plate-3: #262a30; /* rules and inset panels */
+  --color-ink: #e9e7e2; /* 14.7:1 */
+  --color-ink-2: #b6b9be; /* 9.2:1 */
+  --color-ink-3: #8a9098; /* 5.6:1 — the faintest text allowed */
+
+  --font-display: var(--font-epilogue), "Helvetica Neue", sans-serif;
+  --font-body: var(--font-newsreader), Georgia, serif;
+  --font-arabic-display: var(--font-mirza), "Segoe UI", serif;
+  --font-arabic-body: var(--font-lemonada), system-ui, sans-serif;
+
+  --text-hero: clamp(2.1rem, 5.4vw, 4.4rem);
+  --text-display: clamp(1.6rem, 3.2vw, 2.6rem);
+  --text-lead: clamp(1.02rem, 1.1vw, 1.16rem);
+
+  /* Hard and short. A press does not ease out. */
+  --ease-press: cubic-bezier(0.16, 0.84, 0.24, 1);
+}
+
+@layer base {
+  section[id] { scroll-margin-top: 5.5rem; }
+
+  html {
+    background: var(--color-plate);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: auto;
+  }
+
+  /* A serif body face is the point: this is a record, and records are set in
+     text faces, not in interface faces. */
+  body { font-family: var(--font-body); overflow-x: hidden; }
+  html[dir="rtl"] body { font-family: var(--font-arabic-body); }
+
+  ::selection { background: var(--color-ink); color: var(--color-plate); }
+  :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility font-display { font-family: var(--font-display); }
+html[dir="rtl"] .font-display { font-family: var(--font-arabic-display); }
+
+@utility label {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+html[dir="rtl"] .label {
+  font-family: var(--font-arabic-body);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A factory code, set the way a parts catalogue sets one. */
+@utility code {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+ * Motion signature: the register.
+ *
+ * Content arrives out of register and the plates converge — a second, offset
+ * impression of the same block slides onto the first and the whole thing snaps
+ * to true. Nothing fades in, nothing travels far, and there is no overshoot,
+ * because a press either hits the sheet or it does not.
+ * ------------------------------------------------------------------------ */
+
+@keyframes register {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--reg-x, -7px), 0, 0) scale(1.014);
+    filter: blur(1.4px);
+  }
+  55% { opacity: 1; }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes rule-ink {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes register {
+    from { opacity: 1; transform: none; filter: none; }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes rule-ink { from { transform: none; } to { transform: none; } }
+}
+
+/* Driven by a data attribute the observer writes. Unlayered so a Tailwind
+   opacity utility cannot outrank the resting state. */
+[data-reg] { opacity: 0; }
+[data-reg][data-seen] {
+  animation: register 420ms var(--ease-press) var(--reg-delay, 0ms) both;
+}
+/* The mis-registration comes from the trailing edge, so it mirrors per
+   locale the way a sheet feeds through a press. */
+html[dir="rtl"] [data-reg] { --reg-x: 7px; }
+
+[data-rule] { transform: scaleX(0); }
+[data-rule][data-seen] {
+  animation: rule-ink 460ms var(--ease-press) var(--reg-delay, 0ms) both;
+}
+
+/* ---------------------------------------------------------------------------
+ * Arabic corrections. Keyed off [dir], never [lang] — browser translation
+ * rewrites lang. Unlayered so they outrank Tailwind utilities.
+ * ------------------------------------------------------------------------ */
+
+html[dir="ltr"] .text-hero { line-height: 1.04; letter-spacing: -0.02em; }
+html[dir="rtl"] .text-hero {
+  font-size: clamp(2rem, 5vw, 4rem);
+  /* Mirza carries long descenders and a high hamza; a tight leading collides
+     them with the line above. */
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+html[dir="ltr"] .text-display { line-height: 1.1; letter-spacing: -0.015em; }
+html[dir="rtl"] .text-display {
+  font-size: clamp(1.55rem, 3.1vw, 2.4rem);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] [class*="tracking-["],
+html[dir="rtl"] .tracking-widest,
+html[dir="rtl"] .tracking-wider { letter-spacing: 0; }
+
+/* Lemonada sets a little small for its em, so Arabic body copy runs up a
+   notch with more leading. */
+html[dir="rtl"] .text-lead { font-size: clamp(1.04rem, 1.15vw, 1.18rem); line-height: 1.95; }
+
+.fine { font-size: 0.78rem; line-height: 1.65; }
+html[dir="rtl"] .fine { font-size: 0.82rem; line-height: 1.85; }
+
+/* Marque names, model names, trims, years and factory codes all stay Latin
+   and LTR inside Arabic copy — "W205" must not reorder. */
+.latin {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--font-display);
+}
+html[dir="rtl"] .latin { text-align: right; }
