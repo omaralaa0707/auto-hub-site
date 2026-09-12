@@ -94,53 +94,36 @@ html[dir="rtl"] .label {
 }
 
 /* ---------------------------------------------------------------------------
- * Motion signature: the register.
+ * Section reveal.
  *
- * Content arrives out of register and the plates converge — a second, offset
- * impression of the same block slides onto the first and the whole thing snaps
- * to true. Nothing fades in, nothing travels far, and there is no overshoot,
- * because a press either hits the sheet or it does not.
+ * One calm reveal, used once per block: opacity 0→1 plus a small rise, never
+ * a per-child stagger. [data-reveal] is observed by an IntersectionObserver
+ * and gains [data-seen] the moment it is a little into the viewport; the
+ * observer then disconnects, so it only ever plays once. A scriptless
+ * request gets a <noscript><style> in layout.tsx that forces this visible.
  * ------------------------------------------------------------------------ */
-
-@keyframes register {
-  from {
-    opacity: 0;
-    transform: translate3d(var(--reg-x, -7px), 0, 0) scale(1.014);
-    filter: blur(1.4px);
-  }
-  55% { opacity: 1; }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: blur(0);
-  }
-}
-@keyframes rule-ink {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  @keyframes register {
-    from { opacity: 1; transform: none; filter: none; }
-    to { opacity: 1; transform: none; filter: none; }
-  }
-  @keyframes rule-ink { from { transform: none; } to { transform: none; } }
-}
 
 /* Driven by a data attribute the observer writes. Unlayered so a Tailwind
    opacity utility cannot outrank the resting state. */
-[data-reg] { opacity: 0; }
-[data-reg][data-seen] {
-  animation: register 420ms var(--ease-press) var(--reg-delay, 0ms) both;
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(10px);
 }
-/* The mis-registration comes from the trailing edge, so it mirrors per
-   locale the way a sheet feeds through a press. */
-html[dir="rtl"] [data-reg] { --reg-x: 7px; }
+[data-reveal][data-seen] {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 450ms ease-out,
+    transform 450ms ease-out;
+}
 
-[data-rule] { transform: scaleX(0); }
-[data-rule][data-seen] {
-  animation: rule-ink 460ms var(--ease-press) var(--reg-delay, 0ms) both;
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal][data-seen] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------

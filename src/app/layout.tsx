@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Epilogue, Newsreader, Mirza, Lemonada } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/i18n/locale-provider";
-import { ScrollProvider } from "@/components/motion/scroll-provider";
 import { ar } from "@/content/ar";
 import { en } from "@/content/en";
 
@@ -64,7 +63,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <style>{`[data-reg],[data-rule]{opacity:1!important;transform:none!important;filter:none!important;animation:none!important}`}</style>
         </noscript>
         <LocaleProvider dictionaries={{ ar, en }} defaultLocale="ar">
-          <ScrollProvider />
           {children}
         </LocaleProvider>
       </body>

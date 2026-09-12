@@ -4,7 +4,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ElementType,
   type ReactElement,
   type ReactNode,
@@ -16,69 +15,50 @@ import { DotScreen } from "@/components/webgl/dot-screen";
 
 /* ---------------------------------------------------------------- motion -- */
 
-function useOnScreen<T extends HTMLElement>(rootMargin = "-6% 0px -6% 0px") {
-  const ref = useRef<T | null>(null);
+/**
+ * The one motion the page keeps: opacity 0→1 plus a small rise, 450ms
+ * ease-out, once. `[data-reveal]` starts the observer; it fires early
+ * (rootMargin) and disconnects after the first hit, so it never re-triggers
+ * on scroll-back. There is no per-item delay here — every block reveals on
+ * its own schedule, driven only by when it actually crosses into view, never
+ * offset by an index. `prefers-reduced-motion` and a scriptless request both
+ * leave the content visible (see globals.css and layout.tsx).
+ */
+function Reveal({
+  children,
+  className,
+  as: Tag = "div",
+}: {
+  children: ReactNode;
+  className?: string;
+  as?: ElementType;
+}) {
+  const ref = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    const reveal = () => node.setAttribute("data-seen", "");
     if (typeof IntersectionObserver === "undefined") {
-      reveal();
+      node.setAttribute("data-seen", "");
       return;
     }
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
-          reveal();
+          node.setAttribute("data-seen", "");
           io.disconnect();
         }
       },
-      { rootMargin, threshold: 0.01 },
+      { rootMargin: "-6% 0px -6% 0px", threshold: 0.01 },
     );
     io.observe(node);
     return () => io.disconnect();
-  }, [rootMargin]);
-  return ref;
-}
-
-const delayVar = (d: number) => ({ "--reg-delay": `${d}ms` }) as CSSProperties;
-
-/**
- * This site's arrival: the register. A block lands slightly off, out of
- * register and soft, and the plates converge onto true. Short and hard —
- * a press either hits the sheet or it does not.
- */
-function Reg({
-  children,
-  className,
-  delay = 0,
-  as: Tag = "div",
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-  as?: ElementType;
-}) {
-  const ref = useOnScreen<HTMLElement>();
+  }, []);
   // A polymorphic tag's prop union is too wide for TS to resolve on its own.
   const C = Tag as unknown as (p: Record<string, unknown>) => ReactElement;
   return (
-    <C ref={ref} data-reg="" className={className} style={delayVar(delay)}>
+    <C ref={ref} data-reveal="" className={className}>
       {children}
     </C>
-  );
-}
-
-function Rule({ className, delay = 0 }: { className?: string; delay?: number }) {
-  const ref = useOnScreen<HTMLDivElement>();
-  return (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      data-rule=""
-      className={`h-px w-full origin-[left_center] bg-ink/25 rtl:origin-[right_center] ${className ?? ""}`}
-      style={delayVar(delay)}
-    />
   );
 }
 
@@ -92,18 +72,14 @@ function SectionHead({
   intro?: string;
 }) {
   return (
-    <div>
-      <Reg className="label text-ink-3">{eyebrow}</Reg>
-      <Reg as="h2" className="text-display font-display mt-3 max-w-[24ch] text-ink" delay={70}>
-        {heading}
-      </Reg>
-      <Rule className="mt-6" delay={130} />
+    <Reveal>
+      <div className="label text-ink-3">{eyebrow}</div>
+      <h2 className="text-display font-display mt-3 max-w-[24ch] text-ink">{heading}</h2>
+      <div aria-hidden="true" className="mt-6 h-px w-full bg-ink/25" />
       {intro ? (
-        <Reg className="text-lead mt-6 max-w-[68ch] leading-[1.8] text-ink-2" delay={180}>
-          {intro}
-        </Reg>
+        <p className="text-lead mt-6 max-w-[68ch] leading-[1.8] text-ink-2">{intro}</p>
       ) : null}
-    </div>
+    </Reveal>
   );
 }
 
@@ -175,7 +151,7 @@ function Entry({
   const c = useHub();
 
   return (
-    <Reg as="li" delay={Math.min(index, 6) * 45}>
+    <Reveal as="li">
       <button
         onClick={onSelect}
         aria-pressed={selected}
@@ -213,7 +189,7 @@ function Entry({
           {car.sold ? c.record.soldTag : c.record.availableTag}
         </span>
       </button>
-    </Reg>
+    </Reveal>
   );
 }
 
@@ -235,15 +211,15 @@ function Record({
         intro={c.record.intro}
       />
 
-      <Reg className="fine mt-6 max-w-[68ch] border-s-2 border-ink/40 ps-4 text-ink-3" delay={240}>
+      <Reveal className="fine mt-6 max-w-[68ch] border-s-2 border-ink/40 ps-4 text-ink-3">
         {c.record.legend}
-      </Reg>
+      </Reveal>
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
         {/* The plate stays with the list, so choosing an entry re-rules
             something you can still see. */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <Reg>
+          <Reveal>
             <DotScreen
               src={car.frames[0]}
               sold={car.sold}
@@ -253,7 +229,7 @@ function Record({
             <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
               <span className="latin text-[0.98rem] text-ink">
                 {car.marque} {car.model}
-                {car.year ? ` \u00b7 ${car.year}` : ""}
+                {car.year ? ` · ${car.year}` : ""}
               </span>
               <span className="label text-ink-3">
                 {car.sold ? c.record.soldTag : c.record.availableTag}
@@ -273,7 +249,7 @@ function Record({
               </a>
             </div>
             <p className="fine mt-2 text-ink-3">{c.hero.screenHint}</p>
-          </Reg>
+          </Reveal>
         </div>
 
         <ul>
@@ -289,14 +265,14 @@ function Record({
         </ul>
       </div>
 
-      <Reg className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4" delay={80}>
+      <Reveal className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {c.record.glosses.map((g) => (
           <div key={g.term} className="border-t border-ink/20 pt-4">
             <div className="latin text-[0.94rem] font-semibold text-ink">{g.term}</div>
             <p className="fine mt-1.5 text-ink-3">{g.gloss}</p>
           </div>
         ))}
-      </Reg>
+      </Reveal>
     </section>
   );
 }
@@ -312,8 +288,8 @@ function Codes() {
         <SectionHead eyebrow={c.codes.eyebrow} heading={c.codes.heading} intro={c.codes.intro} />
 
         <div className="mt-14 grid gap-px sm:grid-cols-2 lg:grid-cols-4">
-          {CHASSIS.map((car, i) => (
-            <Reg key={car.id} className="bg-plate-3 p-6" delay={i * 70}>
+          {CHASSIS.map((car) => (
+            <Reveal key={car.id} className="bg-plate-3 p-6">
               <div className="label text-ink-3">{c.codes.codeLabel}</div>
               <div className="code mt-2 text-[2.4rem] leading-none text-ink">
                 <span className="latin">{car.tag}</span>
@@ -331,13 +307,11 @@ function Codes() {
                   </>
                 ) : null}
               </div>
-            </Reg>
+            </Reveal>
           ))}
         </div>
 
-        <Reg className="fine mt-8 max-w-[60ch] text-ink-3" delay={320}>
-          {c.codes.note}
-        </Reg>
+        <Reveal className="fine mt-8 max-w-[60ch] text-ink-3">{c.codes.note}</Reveal>
       </div>
     </section>
   );
@@ -351,24 +325,20 @@ function Word() {
   return (
     <section id="word" className="mx-auto max-w-[86rem] px-5 py-24 sm:px-8 sm:py-28">
       <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-        <div>
-          <Reg className="label text-ink-3">{c.word.eyebrow}</Reg>
-          <Reg as="h2" className="text-display font-display mt-3 max-w-[20ch] text-ink" delay={70}>
+        <Reveal>
+          <div className="label text-ink-3">{c.word.eyebrow}</div>
+          <h2 className="text-display font-display mt-3 max-w-[20ch] text-ink">
             {c.word.heading}
-          </Reg>
-          <Rule className="mt-6" delay={130} />
-          {c.word.body.map((p, i) => (
-            <Reg
-              key={p.slice(0, 24)}
-              className="text-lead mt-6 max-w-[54ch] leading-[1.85] text-ink-2"
-              delay={180 + i * 80}
-            >
+          </h2>
+          <div aria-hidden="true" className="mt-6 h-px w-full bg-ink/25" />
+          {c.word.body.map((p) => (
+            <p key={p.slice(0, 24)} className="text-lead mt-6 max-w-[54ch] leading-[1.85] text-ink-2">
               {p}
-            </Reg>
+            </p>
           ))}
-        </div>
+        </Reveal>
 
-        <Reg className="flex flex-col justify-center border border-ink/20 p-8 sm:p-12" delay={140}>
+        <Reveal className="flex flex-col justify-center border border-ink/20 p-8 sm:p-12">
           {/* Their word, at the size they never set it: kept in Arabic in both
               locales and glossed rather than translated away. */}
           <div
@@ -383,7 +353,7 @@ function Word() {
           <div className="mt-8 border-t border-ink/20 pt-5">
             <p className="fine text-ink-3">{c.word.noPrice}</p>
           </div>
-        </Reg>
+        </Reveal>
       </div>
     </section>
   );
@@ -402,14 +372,14 @@ function Hero() {
   return (
     <section id="top" className="relative pt-16">
       <div className="mx-auto max-w-[86rem] px-5 pt-12 sm:px-8 lg:pt-16">
-        <Reg className="label text-ink-3">{c.hero.eyebrow}</Reg>
-        <Reg as="h1" className="text-hero font-display mt-4 max-w-[19ch] text-ink" delay={90}>
-          {c.hero.headline}
-        </Reg>
+        <Reveal>
+          <div className="label text-ink-3">{c.hero.eyebrow}</div>
+          <h1 className="text-hero font-display mt-4 max-w-[19ch] text-ink">{c.hero.headline}</h1>
+        </Reveal>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-14">
           {/* The screen. Its coarseness is the selected entry's status. */}
-          <Reg delay={40}>
+          <Reveal>
             <DotScreen
               src={car.frames[0]}
               sold={car.sold}
@@ -426,14 +396,12 @@ function Hero() {
               </span>
             </div>
             <p className="fine mt-1 text-ink-3">{c.hero.screenHint}</p>
-          </Reg>
+          </Reveal>
 
-          <div>
-            <Reg className="text-lead max-w-[48ch] leading-[1.85] text-ink-2" delay={160}>
-              {c.hero.sub}
-            </Reg>
+          <Reveal>
+            <p className="text-lead max-w-[48ch] leading-[1.85] text-ink-2">{c.hero.sub}</p>
 
-            <Reg className="mt-9 flex flex-wrap items-center gap-3" delay={240}>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
               <a
                 href={PROFILE.phoneHref}
                 className="bg-ink px-6 py-3 text-[0.9rem] font-medium text-plate transition-opacity hover:opacity-85"
@@ -446,9 +414,9 @@ function Hero() {
               >
                 {c.hero.secondaryCta}
               </a>
-            </Reg>
+            </div>
 
-            <Reg className="mt-12 grid grid-cols-2 gap-px border-t border-ink/20" delay={320}>
+            <div className="mt-12 grid grid-cols-2 gap-px border-t border-ink/20">
               {[
                 { k: c.hero.soldLabel, v: String(SOLD) },
                 { k: c.hero.availableLabel, v: String(AVAILABLE) },
@@ -460,8 +428,8 @@ function Hero() {
                   <div className="label mt-2 text-ink-3">{s.k}</div>
                 </div>
               ))}
-            </Reg>
-          </div>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -476,12 +444,12 @@ function Contact() {
   return (
     <section id="contact" className="border-t border-ink/12 bg-plate-2 py-24 sm:py-28">
       <div className="mx-auto max-w-[86rem] px-5 sm:px-8">
-        <Reg as="h2" className="text-display font-display max-w-[16ch] text-ink">
+        <Reveal as="h2" className="text-display font-display max-w-[16ch] text-ink">
           {c.contact.heading}
-        </Reg>
+        </Reveal>
 
         <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <Reg delay={60}>
+          <Reveal>
             <div className="label text-ink-3">{c.contact.addressLabel}</div>
             <p className="mt-3 text-[0.94rem] leading-relaxed text-ink-2">{c.contact.address}</p>
             <a
@@ -492,9 +460,9 @@ function Contact() {
             >
               Google Maps
             </a>
-          </Reg>
+          </Reveal>
 
-          <Reg delay={130}>
+          <Reveal>
             <div className="label text-ink-3">{c.contact.phoneLabel}</div>
             <a
               href={PROFILE.phoneHref}
@@ -509,9 +477,9 @@ function Contact() {
             >
               {c.contact.email}
             </a>
-          </Reg>
+          </Reveal>
 
-          <Reg delay={200}>
+          <Reveal>
             <div className="label text-ink-3">{c.contact.ownerLabel}</div>
             <p className="mt-3 text-[0.96rem] text-ink-2">{c.contact.owner}</p>
             <div className="mt-6 flex flex-col gap-2 text-[0.9rem]">
@@ -532,16 +500,16 @@ function Contact() {
                 Facebook
               </a>
             </div>
-          </Reg>
+          </Reveal>
 
-          <Reg delay={270}>
+          <Reveal>
             <a
               href={PROFILE.phoneHref}
               className="inline-block bg-ink px-6 py-3 text-[0.9rem] font-medium text-plate transition-opacity hover:opacity-85"
             >
               {c.contact.cta}
             </a>
-          </Reg>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -577,7 +545,6 @@ export function Footer() {
           <span className="font-display text-[0.94rem] font-semibold text-ink">{c.brand.name}</span>
           <span className="fine text-ink-3">{c.brand.tagline}</span>
         </div>
-        <p className="fine max-w-[64ch] text-ink-3">{c.footer.disclaimer}</p>
         <p className="fine text-ink-3">{c.footer.rights}</p>
       </div>
     </footer>
